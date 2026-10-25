@@ -60,3 +60,14 @@ def trigger_solve():
     with open(RESULTS / "routes.json", "w") as f:
         json.dump(result, f, indent=2)
     return result   
+
+
+@app.get("/debug")
+def debug():
+    import os
+    return {
+        "cwd": os.getcwd(),
+        "results_exists": RESULTS.exists(),
+        "results_files": [f.name for f in RESULTS.iterdir()] if RESULTS.exists() else [],
+        "abs_path": str(RESULTS.resolve()),
+    }   
