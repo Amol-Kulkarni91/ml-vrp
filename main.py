@@ -1,3 +1,6 @@
+# main.py
+from src.serving.api import app   
+
 def main():
     print("Hello from ml-vrp!")
 

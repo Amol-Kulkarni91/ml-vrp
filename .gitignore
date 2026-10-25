@@ -7,8 +7,12 @@ wheels/
 *.egg-info
 
 # Virtual environments
-.venv
+.venv/
 data/raw/
 data/processed/
-results/
-mlflow-data/   
+mlflow-data/
+notebooks/
+tests/
+dashboard/
+.github/
+*.parquet  

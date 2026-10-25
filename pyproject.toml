@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.162.0",
+    "fastapi[standard]>=0.110", 
     "geopandas>=1.2.0",
     "ipykernel>=7.4.0",
     "lightgbm>=4.7.0",
