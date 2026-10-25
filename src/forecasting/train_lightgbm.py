@@ -46,8 +46,8 @@ def train():
         mlflow.lightgbm.log_model(model, "model")
 
     # Save for serving
-    model.save_model("results/lightgbm_model.txt")
-
+    model.booster_.save_model("results/lightgbm_model.txt")
+   
     print(f"MAE: {mae:.2f} trips")
     print(f"RMSE: {rmse:.2f}")
     print(f"MAPE: {mape:.1f}%")
