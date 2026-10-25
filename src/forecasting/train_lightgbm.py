@@ -3,6 +3,7 @@ import mlflow
 import lightgbm as lgb
 import pandas as pd
 import numpy as np
+import json
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from src.data.features import FEATURE_COLS, TARGET
 
@@ -52,11 +53,17 @@ def train():
     print(f"RMSE: {rmse:.2f}")
     print(f"MAPE: {mape:.1f}%")
     print(f"Model saved to results/lightgbm_model.txt")
+    
+    with open("results/lightgbm_metrics.json", "w") as f:
+        json.dump({"mae": mae, "rmse": rmse, "mape_pct": mape}, f)
 
     # Save predictions for the VRP solver
     df[~train_mask][["PULocationID", "date"]].assign(
         forecast=preds
     ).to_json("results/forecast.json", orient="records")
 
+
+
+
 if __name__ == "__main__":
-    train()   
+    train() 
