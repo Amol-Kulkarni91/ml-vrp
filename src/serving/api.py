@@ -4,10 +4,10 @@ from pydantic import BaseModel
 from pathlib import Path
 import json
 import pandas as pd
-import lightgbm as lgb
+#import lightgbm as lgb
 
 app = FastAPI(title="ML-VRP API", version="0.1.0")
-_booster = lgb.Booster(model_file="results/lightgbm_model.txt")
+# _booster = lgb.Booster(model_file="results/lightgbm_model.txt")
 
 
 RESULTS = Path("results")
