@@ -1,0 +1,9 @@
+data:
+  source: "nyc_tlc"
+  # Monthly parquet files from NYC TLC
+  base_url: "https://d37ci6vzurychx.cloudfront.net/trip-data"
+  # Use 6 months for initial training
+  months: ["2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09"]
+  # Subset of zones for VRP (pick ~20-30 zones in one borough)
+  zone_ids: [23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+             33, 34, 35, 36, 37, 38, 39, 40, 41, 42]

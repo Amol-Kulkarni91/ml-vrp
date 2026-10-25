@@ -1,0 +1,62 @@
+"""Train LightGBM demand forecast per zone, log to MLflow."""
+import mlflow
+import lightgbm as lgb
+import pandas as pd
+import numpy as np
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from data.features import FEATURE_COLS, TARGET
+
+def train():
+    df = pd.read_parquet("data/processed/features.parquet")
+
+    # Chronological split: last 14 days = test
+    dates = sorted(df["date"].unique())
+    test_dates = set(dates[-14:])
+    train_mask = ~df["date"].isin(test_dates)
+
+    X_train = df[train_mask][FEATURE_COLS]
+    y_train = df[train_mask][TARGET]
+    X_test = df[~train_mask][FEATURE_COLS]
+    y_test = df[~train_mask][TARGET]
+
+    model = lgb.LGBMRegressor(
+        n_estimators=300,
+        learning_rate=0.05,
+        max_depth=6,
+        num_leaves=31,
+        random_state=42,
+        verbose=-1,
+    )
+    model.fit(X_train, y_train)
+
+    preds = model.predict(X_test)
+    mae = mean_absolute_error(y_test, preds)
+    rmse = np.sqrt(mean_squared_error(y_test, preds))
+    mape = np.mean(np.abs((y_test - preds) / (y_test + 1e-8))) * 100
+
+    # Log to MLflow
+    mlflow.set_tracking_uri("http://localhost:5000")
+    mlflow.set_experiment("ml-vrp")
+    with mlflow.start_run(run_name="lightgbm-baseline"):
+        mlflow.log_params({
+            "n_estimators": 300, "learning_rate": 0.05,
+            "max_depth": 6, "num_leaves": 31,
+        })
+        mlflow.log_metrics({"mae": mae, "rmse": rmse, "mape_pct": mape})
+        mlflow.lightgbm.log_model(model, "model")
+
+    # Save for serving
+    model.save_model("results/lightgbm_model.txt")
+
+    print(f"MAE: {mae:.2f} trips")
+    print(f"RMSE: {rmse:.2f}")
+    print(f"MAPE: {mape:.1f}%")
+    print(f"Model saved to results/lightgbm_model.txt")
+
+    # Save predictions for the VRP solver
+    df[~train_mask][["PULocationID", "date"]].assign(
+        forecast=preds
+    ).to_json("results/forecast.json", orient="records")
+
+if __name__ == "__main__":
+    train()   
