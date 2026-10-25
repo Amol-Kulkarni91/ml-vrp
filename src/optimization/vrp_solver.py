@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import numpy as np
 from ortools.constraint_solver import routing_enums_pb2, pywrapcp
-from config import load_config
+from src.config import load_config
 
 def build_distance_matrix(zone_ids: list[int]) -> list[list[int]]:
     """
@@ -54,6 +54,8 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
         return demand[manager.IndexToNode(from_index)]
 
     demand_idx = routing.RegisterUnaryTransitCallback(demand_cb)
+    demand = forecast.set_index("PULocationID")["forecast"].astype(int).tolist()
+    demand[0] = 0  # depot doesn't consume capacity
     routing.AddDimensionWithVehicleCapacity(
         demand_idx, 0, [capacity] * num_vehicles, True, "Capacity"
     )
@@ -64,14 +66,16 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
         return dist_matrix[manager.IndexToNode(from_index)][manager.IndexToNode(to_index)] // 500
 
     time_idx = routing.RegisterTransitCallback(time_cb)
-    routing.AddDimension(time_idx, 60, 600, False, "Time")
+    tw_rel = [tw[0], tw[1] - tw[0]]  # [0, 1200]
+    
+    routing.AddDimension(time_idx, 60, tw[1] + 120, False, "Time")  # span = 1320
     time_dim = routing.GetDimensionOrDie("Time")
     for i in range(1, num_locations):
         idx = manager.NodeToIndex(i)
-        time_dim.CumulVar(idx).SetRange(tw[0], tw[1])
+        time_dim.CumulVar(idx).SetRange(0, tw_rel[1])
     for v in range(num_vehicles):
         idx = routing.Start(v)
-        time_dim.CumulVar(idx).SetRange(tw[0], tw[1])
+        time_dim.CumulVar(idx).SetRange(0, tw_rel[1])
     for v in range(num_vehicles):
         routing.AddVariableMinimizedByFinalizer(time_dim.CumulVar(routing.Start(v)))
         routing.AddVariableMinimizedByFinalizer(time_dim.CumulVar(routing.End(v)))
@@ -114,10 +118,16 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
 if __name__ == "__main__":
     cfg = load_config()
     forecast = pd.read_json("results/forecast.json")
-    # Use latest date only
     latest = forecast["date"].max()
     today = forecast[forecast["date"] == latest]
     result = solve_vrp(today, cfg)
     with open("results/routes.json", "w") as f:
         json.dump(result, f, indent=2)
-    print(f"Routes: {result['num_routes']}, Total distance: {result['total_distance_m']} m")   
+
+    if result["status"] == "infeasible":
+        print("No feasible solution found.")
+        print(f"  Zones: {len(today)}, Capacity: {cfg['optimization']['vehicle_capacity']}, "
+              f"Vehicles: {cfg['optimization']['num_vehicles']}")
+        print(f"  Total demand: {today['forecast'].sum():.0f}")
+    else:
+        print(f"Routes: {result['num_routes']}, Total distance: {result['total_distance_m']} m")   

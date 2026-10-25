@@ -28,8 +28,8 @@ forecasting:
 
 optimization:
   num_vehicles: 5
-  vehicle_capacity: 20  # max trips per vehicle per day
-  time_window: [300, 1200]  # 5am to 8pm in minutes
+  vehicle_capacity: 600  # max trips per vehicle per day
+  time_window: [0, 1200]  # 5am to 8pm in minutes
   depot_zone: 23  # first zone in list is the depot
 
 serving:
