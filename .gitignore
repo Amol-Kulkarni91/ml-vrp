@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+data/raw/
+data/processed/
+results/
+mlflow-data/   

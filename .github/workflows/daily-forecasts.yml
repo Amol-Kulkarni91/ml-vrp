@@ -1,0 +1,40 @@
+name: Daily Forecast & Solve
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  forecast-and-solve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --no-dev
+
+      - name: Ingest & aggregate
+        run:  uv run python -m src.data.ingest
+
+      - name: Build features
+        run: uv run python -m src.data.features
+
+      - name: Train LightGBM
+        run: uv run python -m src.forecasting.train_lightgbm
+
+      - name: Solve VRP
+        run: uv run python -m src.optimization.vrp_solver
+
+      - name: Push results
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add results/
+          git commit -m "daily forecast $(date -u +%Y-%m-%d)" || echo "No changes"
+          git push   

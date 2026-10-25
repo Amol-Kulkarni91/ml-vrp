@@ -7,3 +7,35 @@ data:
   # Subset of zones for VRP (pick ~20-30 zones in one borough)
   zone_ids: [23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
              33, 34, 35, 36, 37, 38, 39, 40, 41, 42]
+
+forecasting:
+  target: "trip_count"
+  horizon: 1  # predict next day
+  features:
+    - lag_1
+    - lag_7
+    - rolling_mean_7
+    - rolling_std_7
+    - day_of_week
+    - is_weekend
+    - hour_of_day
+
+  lightgbm:
+    n_estimators: 300
+    learning_rate: 0.05
+    max_depth: 6
+    num_leaves: 31
+
+optimization:
+  num_vehicles: 5
+  vehicle_capacity: 20  # max trips per vehicle per day
+  time_window: [300, 1200]  # 5am to 8pm in minutes
+  depot_zone: 23  # first zone in list is the depot
+
+serving:
+  host: "0.0.0.0"
+  port: 8000
+
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  experiment_name: "ml-vrp"   
