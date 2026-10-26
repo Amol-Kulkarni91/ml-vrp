@@ -11,12 +11,14 @@ app = FastAPI(title="ML-VRP API", version="0.1.0")
 
 RESULTS = Path(__file__).resolve().parent.parent.parent / "results"
 
-# In src/serving/api.py
-try:
-    _booster = lgb.Booster(model_file=str(RESULTS / "lightgbm_model.txt"))
-except Exception:
-    _booster = None
+# Replace with:
+_booster = None
 
+def _get_booster():
+    global _booster
+    if _booster is None:
+        _booster = lgb.Booster(model_file=str(RESULTS / "lightgbm_model.txt"))
+    return _booster
 
 RESULTS = Path("results")
 
@@ -45,14 +47,18 @@ def health():
 
 @app.get("/forecast", response_model=list[ForecastResponse])
 def get_forecast():
-    """Return the latest forecast (pre-computed by Airflow/GitHub Actions)."""
+    """Return the latest forecast (pre-computed by GitHub Actions)."""
     path = RESULTS / "forecast.json"
     if not path.exists():
         return []
     df = pd.read_json(path)
+    df["date"] = pd.to_datetime(df["date"])
     latest = df["date"].max()
     today = df[df["date"] == latest]
-    return today[["date", "PULocationID", "forecast"]].to_dict("records")
+    return [
+        {"date": r["date"].strftime("%Y-%m-%d"), "zone_id": int(r["PULocationID"]), "forecast": float(r["forecast"])}
+        for _, r in today.iterrows()
+    ]   
 
 @app.get("/routes", response_model=RoutesResponse)
 def get_routes():
@@ -84,10 +90,7 @@ def predict(req: PredictRequest):
                        req.rolling_std_7, req.day_of_week, req.is_weekend]],
                      columns=["lag_1", "lag_7", "rolling_mean_7",
                               "rolling_std_7", "day_of_week", "is_weekend"])
-    if _booster is None:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    pred = _booster.predict(X)[0]
+    pred = _get_booster().predict(X)[0]
     return {"forecast": round(float(pred), 2)}
 
 @app.get("/debug")

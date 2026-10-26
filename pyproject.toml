@@ -32,7 +32,7 @@ dev = [
     "pip>=26.2.2",
     "pytest",
     "ruff",
-    "httpx",  # required by TestClient
+    "httpx<0.28",  # required by TestClient
 ]
 
 [tool.uv.sources]
