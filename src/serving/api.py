@@ -1,13 +1,17 @@
 """FastAPI service: serves latest forecast and routes."""
-from fastapi import FastAPI
-from pydantic import BaseModel
+import lightgbm as lgb
+import pandas as pd
 from pathlib import Path
 import json
-import pandas as pd
-#import lightgbm as lgb
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 app = FastAPI(title="ML-VRP API", version="0.1.0")
-# _booster = lgb.Booster(model_file="results/lightgbm_model.txt")
+
+RESULTS = Path(__file__).resolve().parent.parent.parent / "results"
+
+# Load model once at startup
+_booster = lgb.Booster(model_file=str(RESULTS / "lightgbm_model.txt"))
 
 
 RESULTS = Path("results")
@@ -22,6 +26,14 @@ class RoutesResponse(BaseModel):
     num_routes: int
     total_distance_m: int
     routes: list[list[int]]
+    
+class PredictRequest(BaseModel):
+    lag_1: float
+    lag_7: float
+    rolling_mean_7: float
+    rolling_std_7: float
+    day_of_week: int
+    is_weekend: int
 
 @app.get("/health")
 def health():
@@ -61,6 +73,15 @@ def trigger_solve():
         json.dump(result, f, indent=2)
     return result   
 
+@app.post("/predict", response_model=dict)
+def predict(req: PredictRequest):
+    """Live inference: pass features, get forecast."""
+    X = pd.DataFrame([[req.lag_1, req.lag_7, req.rolling_mean_7,
+                       req.rolling_std_7, req.day_of_week, req.is_weekend]],
+                     columns=["lag_1", "lag_7", "rolling_mean_7",
+                              "rolling_std_7", "day_of_week", "is_weekend"])
+    pred = _booster.predict(X)[0]
+    return {"forecast": round(float(pred), 2)}
 
 @app.get("/debug")
 def debug():
@@ -71,3 +92,5 @@ def debug():
         "results_files": [f.name for f in RESULTS.iterdir()] if RESULTS.exists() else [],
         "abs_path": str(RESULTS.resolve()),
     }   
+    
+    
