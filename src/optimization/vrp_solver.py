@@ -1,40 +1,64 @@
 """Solve CVRP-TW using OR-Tools with forecasted demand as node weights."""
 import json
+import math
 import pandas as pd
 import numpy as np
 from ortools.constraint_solver import routing_enums_pb2, pywrapcp
 from src.config import load_config
 
+
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
+    """Great-circle distance in meters between two lat/lon points."""
+    R = 6_371_000  # Earth radius in meters
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2 +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+         math.sin(dlon / 2) ** 2)
+    return int(R * 2 * math.asin(math.sqrt(a)))
+
+
 def build_distance_matrix(zone_ids: list[int]) -> list[list[int]]:
-    """
-    Haversine distance in meters between zones.
-    In production, replace with OSRM/GraphHopper travel times.
-    For the portfolio, haversine is fine and documented.
-    """
-    # Zone centroids (lat, lon) — pull from taxi_zones.geojson
-    # For now, use a small hardcoded subset or load from a CSV
-    # TODO: load from data/processed/zone_centroids.csv
-    raise NotImplementedError("Load zone centroids from taxi_zones data")
+    """Load zone centroids and compute pairwise haversine distances."""
+    centroids = pd.read_csv("data/processed/zone_centroids.csv")
+    centroids = centroids.set_index("PULocationID").loc[zone_ids].reset_index()
+
+    lats = centroids["lat"].tolist()
+    lons = centroids["lon"].tolist()
+    n = len(zone_ids)
+
+    dist_matrix = [[0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(i + 1, n):
+            d = haversine(lats[i], lons[i], lats[j], lons[j])
+            dist_matrix[i][j] = d
+            dist_matrix[j][i] = d
+    return dist_matrix
+
 
 def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
     """
     forecast: DataFrame with [PULocationID, forecast] for today
     cfg: config dict with optimization params
     """
-    demand = forecast.set_index("PULocationID")["forecast"].astype(int).tolist()
     zone_ids = forecast["PULocationID"].tolist()
+    demand = forecast.set_index("PULocationID")["forecast"].astype(int).tolist()
+    demand[0] = 0  # depot doesn't consume capacity
     num_locations = len(zone_ids)
     num_vehicles = cfg["optimization"]["num_vehicles"]
     capacity = cfg["optimization"]["vehicle_capacity"]
     tw = cfg["optimization"]["time_window"]
+    max_zone = max(demand)
+    if max_zone > capacity:
+        print(f"  ⚠️  Zone at index {demand.index(max_zone)} has demand {max_zone} > capacity {capacity}")
+        print(f"  Per-zone demand: {demand}")
 
-    # Distance matrix (placeholder — replace with real distances)
-    # Using a simple synthetic matrix for the skeleton
-    np.random.seed(42)
-    dist_matrix = np.random.randint(1000, 5000, size=(num_locations, num_locations))
-    np.fill_diagonal(dist_matrix, 0)
-    dist_matrix = (dist_matrix + dist_matrix.T) // 2  # symmetrize
-    dist_matrix = dist_matrix.tolist()
+    # Real distance matrix from zone centroids
+    dist_matrix = build_distance_matrix(zone_ids)
+    
+    max_dist = max(max(row) for row in dist_matrix)
+    print(f"  Max zone-to-zone distance: {max_dist / 1000:.1f} km")
+    print(f"  Max single-leg time: {max_dist // 500} min")
 
     # OR-Tools setup
     manager = pywrapcp.RoutingIndexManager(
@@ -54,21 +78,19 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
         return demand[manager.IndexToNode(from_index)]
 
     demand_idx = routing.RegisterUnaryTransitCallback(demand_cb)
-    demand = forecast.set_index("PULocationID")["forecast"].astype(int).tolist()
-    demand[0] = 0  # depot doesn't consume capacity
     routing.AddDimensionWithVehicleCapacity(
         demand_idx, 0, [capacity] * num_vehicles, True, "Capacity"
     )
-
+    
     # Time window dimension
     def time_cb(from_index, to_index):
-        # Approximate: distance / 30 km/h → minutes
+        # distance in meters / 30 km/h (8.33 m/s) → seconds → minutes
         return dist_matrix[manager.IndexToNode(from_index)][manager.IndexToNode(to_index)] // 500
 
     time_idx = routing.RegisterTransitCallback(time_cb)
-    tw_rel = [tw[0], tw[1] - tw[0]]  # [0, 1200]
-    
-    routing.AddDimension(time_idx, 60, tw[1] + 120, False, "Time")  # span = 1320
+    tw_rel = [0, tw[1] - tw[0]]  # [0, 1440]
+
+    routing.AddDimension(time_idx, 0, tw_rel[1] + 120, False, "Time")  # span = 1560
     time_dim = routing.GetDimensionOrDie("Time")
     for i in range(1, num_locations):
         idx = manager.NodeToIndex(i)
@@ -103,7 +125,6 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
             idx = solution.Value(routing.NextVar(idx))
         route.append(manager.IndexToNode(idx))
         routes.append(route)
-        # Compute route distance
         for i in range(len(route) - 1):
             total_distance += dist_matrix[route[i]][route[i + 1]]
 
@@ -114,6 +135,7 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
         "routes": routes,
         "zone_ids": zone_ids,
     }
+
 
 if __name__ == "__main__":
     cfg = load_config()
@@ -130,4 +152,4 @@ if __name__ == "__main__":
               f"Vehicles: {cfg['optimization']['num_vehicles']}")
         print(f"  Total demand: {today['forecast'].sum():.0f}")
     else:
-        print(f"Routes: {result['num_routes']}, Total distance: {result['total_distance_m']} m")   
+        print(f"Routes: {result['num_routes']}, Total distance: {result['total_distance_m'] / 1000:.1f} km")   
