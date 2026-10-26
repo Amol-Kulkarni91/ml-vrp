@@ -9,7 +9,6 @@ wheels/
 # Virtual environments
 .venv/
 data/raw/
-data/processed/
 mlflow-data/
 notebooks/
 *.parquet  
