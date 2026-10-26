@@ -37,4 +37,24 @@ jobs:
           git config user.email "actions@github.com"
           git add results/
           git commit -m "daily forecast $(date -u +%Y-%m-%d)" || echo "No changes"
-          git push   
+          git push
+
+            - name: Check drift
+      
+      - name: Check drift
+        id: drift
+        run: |
+          uv run python -c "
+          from src.monitoring.drift import check_drift
+          import json
+          result = check_drift()
+          print(json.dumps(result))
+          " | tee drift_result.json
+
+      - name: Retrain if drift detected
+        if: contains(steps.drift.outputs.result, 'drift_detected')
+        run: |
+          uv run python -m src.data.ingest
+          uv run python -m src.data.features
+          uv run python -m src.forecasting.train_lightgbm
+          uv run python -m src.optimization.vrp_solver   
