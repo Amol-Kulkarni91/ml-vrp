@@ -38,8 +38,6 @@ jobs:
           git add results/
           git commit -m "daily forecast $(date -u +%Y-%m-%d)" || echo "No changes"
           git push
-
-            - name: Check drift
       
       - name: Check drift
         id: drift
