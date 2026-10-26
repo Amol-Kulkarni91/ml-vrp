@@ -1,6 +1,8 @@
-## Live Demo
+# ML-Driven VRP: Demand Forecasting + Route Optimization
 
-- **API:** https://ml-vrp.fastapicloud.dev/docs
-- **Dashboard:**
-The API serves the latest demand forecast and optimized routes,
-recomputed daily by GitHub Actions.   
+End-to-end system that forecasts per-zone delivery demand using gradient-boosted
+and neural models, then solves a capacitated VRP with time windows via OR-Tools,
+served as a FastAPI endpoint with full MLOps (tracking, monitoring, auto-retraining).
+
+## Architecture
+   

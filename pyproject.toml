@@ -30,6 +30,9 @@ dev = [
     "locust>=2.47.0",
     "mypy>=2.4.0",
     "pip>=26.2.2",
+    "pytest",
+    "ruff",
+    "httpx",  # required by TestClient
 ]
 
 [tool.uv.sources]
