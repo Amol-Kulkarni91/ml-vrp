@@ -11,4 +11,4 @@ wheels/
 data/raw/
 mlflow-data/
 notebooks/
-*.parquet  
+ 
