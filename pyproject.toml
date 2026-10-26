@@ -6,16 +6,20 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.110",
+    "folium>=0.20.0",
     "geopandas>=1.2.0",
     "ipykernel>=7.4.0",
     "lightgbm>=4.7.0",
     "mlflow>=2.13,<3.0",
     "ortools>=9.15.6755",
     "pandas>=2.0,<3",
+    "plotly>=7.1.0",
     "pyarrow>=15.0,<20",
     "pydantic>=2.14.1",
     "pyyaml>=6.0.3",
     "shap>=0.54.1",
+    "streamlit>=1.66.1",
+    "streamlit-folium>=0.27.4",
     "torch>=2.14.1",
     "uvicorn>=0.54.0",
 ]
