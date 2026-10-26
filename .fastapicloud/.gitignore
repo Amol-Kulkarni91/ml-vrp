@@ -5,5 +5,4 @@ mlflow-data/
 notebooks/
 tests/
 dashboard/
-.github/
 *.parquet
