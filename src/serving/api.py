@@ -11,8 +11,11 @@ app = FastAPI(title="ML-VRP API", version="0.1.0")
 
 RESULTS = Path(__file__).resolve().parent.parent.parent / "results"
 
-# Load model once at startup
-_booster = lgb.Booster(model_file=str(RESULTS / "lightgbm_model.txt"))
+# In src/serving/api.py
+try:
+    _booster = lgb.Booster(model_file=str(RESULTS / "lightgbm_model.txt"))
+except Exception:
+    _booster = None
 
 
 RESULTS = Path("results")
@@ -81,6 +84,9 @@ def predict(req: PredictRequest):
                        req.rolling_std_7, req.day_of_week, req.is_weekend]],
                      columns=["lag_1", "lag_7", "rolling_mean_7",
                               "rolling_std_7", "day_of_week", "is_weekend"])
+    if _booster is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="Model not loaded")
     pred = _booster.predict(X)[0]
     return {"forecast": round(float(pred), 2)}
 
