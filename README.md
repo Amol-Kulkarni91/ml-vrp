@@ -31,8 +31,8 @@ served as a FastAPI endpoint with full MLOps (tracking, monitoring, auto-retrain
 
 ## Live Demo
 
-- **API:** [https://YOUR-PROJECT.onrender.com/docs](https://YOUR-PROJECT.onrender.com/docs)
-- **Dashboard:** [https://YOUR-SPACE.hf.space](https://YOUR-SPACE.hf.space)
+- **API:** [Endpoint](https://ml-vrp.fastapicloud.dev/docs)
+- **Dashboard:** [Simple Dashboard](https://ml-vrp-1.onrender.com/)
 
 ## Quick Start
 
@@ -46,29 +46,23 @@ uv run python -m src.forecasting.train_pytorch   # Train LSTM + compare
 uv run python -m src.optimization.vrp_solver     # Solve CVRP-TW
 uv run python -m src.monitoring.drift            # Check PSI
 uv run uvicorn src.serving.api:app --reload --port 8000   
-
+```
 ## Results
 
 | Model | MAE (trips) | RMSE | MAPE |
 |-------|:-----------:|:----:|:----:|
-| LightGBM | [FILL IN] | [FILL IN] | [FILL IN] |
-| PyTorch LSTM (2-layer, 128 hidden) | [FILL IN] | [FILL IN] | [FILL IN] |
+| LightGBM | 14.65 | 29.27 | 23.48 |
+| PyTorch LSTM (2-layer, 128 hidden) | 101.9 | 42.77 | 190.33 |
 
 
 | Metric | Value |
 |--------|-------|
 | Zones | 18 (NYC, zones 23–42) |
-| Vehicles | [FILL IN] |
-| Total route distance | [FILL IN] km |
+| Vehicles | 20 |
+| Total route distance | 273.4 km |
 | Solver | OR-Tools (PATH_CHEAPEST_ARC, 30s time limit) |
 | Distance metric | Haversine (great-circle) from zone centroids |
 
-
-| Endpoint | p95 latency |
-|----------|:-----------:|
-| `GET /forecast` | [FILL IN] ms |
-| `GET /routes` | [FILL IN] ms |
-| `POST /predict` | [FILL IN] ms |
 
 
 | Layer | Tool |
