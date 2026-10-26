@@ -18,12 +18,12 @@ def download_zone_centroids(zone_ids: list[int]) -> pd.DataFrame:
     r = requests.get(SHAPEFILE_URL, timeout=30)
     r.raise_for_status()
 
-    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            z.extractall(tmpdir)
-            # Find the .shp file (may be in a subfolder)
-            shp_path = os.path.join(tmpdir, [n for n in z.namelist() if n.endswith(".shp")][0])
-            gdf = gpd.read_file(shp_path)
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z, tempfile.TemporaryDirectory() as tmpdir:
+        z.extractall(tmpdir)
+        # Find the .shp file (may be in a subfolder)
+        shp_name = next(n for n in z.namelist() if n.endswith(".shp"))
+        shp_path = os.path.join(tmpdir, shp_name)
+        gdf = gpd.read_file(shp_path)   
 
     gdf = gdf[gdf["LocationID"].isin(zone_ids)].copy()
 
