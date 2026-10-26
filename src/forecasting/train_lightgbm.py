@@ -58,9 +58,10 @@ def train():
         json.dump({"mae": mae, "rmse": rmse, "mape_pct": mape}, f)
 
     # Save predictions for the VRP solver
-    df[~train_mask][["PULocationID", "date"]].assign(
-        forecast=preds
-    ).to_json("results/forecast.json", orient="records")
+    out = df[~train_mask][["PULocationID", "date"]].assign(forecast=preds)
+    out["PULocationID"] = out["PULocationID"].astype(int)
+    out["date"] = out["date"].dt.strftime("%Y-%m-%d")
+    out.to_json("results/forecast.json", orient="records")
 
 
 
