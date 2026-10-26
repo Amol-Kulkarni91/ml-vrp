@@ -30,14 +30,6 @@ jobs:
 
       - name: Solve VRP
         run: uv run python -m src.optimization.vrp_solver
-
-      - name: Push results
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add results/
-          git commit -m "daily forecast $(date -u +%Y-%m-%d)" || echo "No changes"
-          git push
       
       - name: Check drift
         id: drift
@@ -56,3 +48,11 @@ jobs:
           uv run python -m src.data.features
           uv run python -m src.forecasting.train_lightgbm
           uv run python -m src.optimization.vrp_solver   
+
+      - name: Push results
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add results/
+          git commit -m "daily forecast $(date -u +%Y-%m-%d)" || echo "No changes"
+          git push
