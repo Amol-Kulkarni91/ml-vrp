@@ -16,7 +16,7 @@ jobs:
       - uses: huggingface/hub-sync@v0.3.0
         with:
           github_repo_id: ${{ github.repository }}
-          huggingface_repo_id: DataToModel
+          huggingface_repo_id: /ml-vrp
           hf_token: ${{ secrets.HF_TOKEN }}
           space_sdk: streamlit
           subdirectory: dashboard   
