@@ -1,8 +1,9 @@
 """FastAPI service: serves latest forecast and routes."""
+import json
+from pathlib import Path
+
 import lightgbm as lgb
 import pandas as pd
-from pathlib import Path
-import json
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -62,8 +63,8 @@ def get_routes():
 @app.post("/solve")
 def trigger_solve():
     """Trigger a re-solve (for local dev; in production this is the Airflow DAG)."""
-    from optimization.vrp_solver import solve_vrp
     from config import load_config
+    from optimization.vrp_solver import solve_vrp
     cfg = load_config()
     forecast = pd.read_json(RESULTS / "forecast.json")
     latest = forecast["date"].max()

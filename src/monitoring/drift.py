@@ -1,7 +1,8 @@
 """Detect forecast drift using PSI. Trigger retrain if threshold exceeded."""
 import json
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 
 def compute_psi(expected: np.ndarray, actual: np.ndarray, bins: int = 10) -> float:

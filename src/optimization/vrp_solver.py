@@ -1,9 +1,10 @@
 """Solve CVRP-TW using OR-Tools with forecasted demand as node weights."""
 import json
 import math
+
 import pandas as pd
-import numpy as np
-from ortools.constraint_solver import routing_enums_pb2, pywrapcp
+from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+
 from src.config import load_config
 
 

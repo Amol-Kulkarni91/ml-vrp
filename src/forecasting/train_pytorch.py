@@ -1,10 +1,11 @@
 """Train a 2-layer LSTM demand forecast, log to MLflow, compare with LightGBM."""
-import torch
-import torch.nn as nn
-import pandas as pd
-import numpy as np
 import mlflow
+import numpy as np
+import pandas as pd
+import torch
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from torch import nn
+
 from src.data.features import FEATURE_COLS, TARGET
 
 

@@ -1,8 +1,10 @@
 """Download NYC TLC Yellow Taxi Parquet files and aggregate to zone-day demand."""
 import os
+from pathlib import Path
+
 import pandas as pd
 import requests
-from pathlib import Path
+
 from src.config import load_config
 
 config = load_config()
@@ -18,8 +20,7 @@ def download_month(month: str, dest: str = "data/raw/") -> Path:
     print(f"Downloading {url} ...")
     r = requests.get(url, stream=True)
     with open(path, "wb") as f:
-        for chunk in r.iter_content(1024 * 1024):
-            f.write(chunk)
+        f.writelines(r.iter_content(1024 * 1024))
     return path
 
 def load_and_aggregate(months: list[str], zone_ids: list[int]) -> pd.DataFrame:

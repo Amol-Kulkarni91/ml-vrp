@@ -1,11 +1,14 @@
 """Train LightGBM demand forecast per zone, log to MLflow."""
-import mlflow
-import lightgbm as lgb
-import pandas as pd
-import numpy as np
 import json
+
+import lightgbm as lgb
+import mlflow
+import numpy as np
+import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+
 from src.data.features import FEATURE_COLS, TARGET
+
 
 def train():
     df = pd.read_parquet("data/processed/features.parquet")
@@ -52,7 +55,7 @@ def train():
     print(f"MAE: {mae:.2f} trips")
     print(f"RMSE: {rmse:.2f}")
     print(f"MAPE: {mape:.1f}%")
-    print(f"Model saved to results/lightgbm_model.txt")
+    print("Model saved to results/lightgbm_model.txt")
     
     with open("results/lightgbm_metrics.json", "w") as f:
         json.dump({"mae": mae, "rmse": rmse, "mape_pct": mape}, f)

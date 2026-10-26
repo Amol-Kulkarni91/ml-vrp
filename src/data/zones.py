@@ -1,11 +1,13 @@
-import zipfile
 import io
 import os
 import tempfile
-import requests
-import pandas as pd
-import geopandas as gpd
+import zipfile
 from pathlib import Path
+
+import geopandas as gpd
+import pandas as pd
+import requests
+
 from src.config import load_config
 
 SHAPEFILE_URL = "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zones.zip"
