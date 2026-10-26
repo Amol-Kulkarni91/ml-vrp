@@ -20,7 +20,7 @@ jobs:
         run: uv sync --frozen --no-dev
 
       - name: Ingest & aggregate
-        run:  uv run python -m src.data.ingest
+        run:  uv run python -m src.data.ingest_data
 
       - name: Build features
         run: uv run python -m src.data.features
