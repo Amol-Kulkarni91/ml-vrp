@@ -12,6 +12,4 @@ data/raw/
 data/processed/
 mlflow-data/
 notebooks/
-tests/
-dashboard/
 *.parquet  
