@@ -73,7 +73,7 @@ def get_routes():
 def trigger_solve():
     """Trigger a re-solve (for local dev; in production this is the Airflow DAG)."""
     from src.config import load_config
-    from optimization.vrp_solver import solve_vrp
+    from src.optimization.vrp_solver import solve_vrp
     cfg = load_config()
     forecast = pd.read_json(RESULTS / "forecast.json")
     latest = forecast["date"].max()
