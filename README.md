@@ -31,7 +31,7 @@ served as a FastAPI endpoint with full MLOps (tracking, monitoring, auto-retrain
 
 ## Live Demo
 
-- **API:** [Endpoint](https://ml-vrp.fastapicloud.dev/docs)
+- **API:** [Endpoint](https://ml-vrp.onrender.com/docs)
 - **Dashboard:** [Simple Dashboard](https://ml-vrp-1.onrender.com/)
 
 ## Quick Start
