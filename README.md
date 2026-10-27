@@ -63,6 +63,14 @@ uv run uvicorn src.serving.api:app --reload --port 8000
 | Solver | OR-Tools (PATH_CHEAPEST_ARC, 30s time limit) |
 | Distance metric | Haversine (great-circle) from zone centroids |
 
+Type     Name                     # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
+--------|-----------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+GET      /forecast                   586     0(0.00%) |    555     195    1549    470 |    9.85        0.00
+GET      /health                     168     0(0.00%) |    358     184    1060    280 |    2.82        0.00
+POST     /predict                    420     0(0.00%) |    431     186    1429    330 |    7.06        0.00
+GET      /routes                     520     0(0.00%) |    439     181    1544    330 |    8.74        0.00
+--------|-----------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+         Aggregated                 1694     0(0.00%) |    469     181    1549    370 |   28.48        0.00
 
 
 | Layer | Tool |
@@ -123,21 +131,6 @@ uv run uvicorn src.serving.api:app --reload --port 8000
 - No GPU training (LSTM is CPU-only, small enough for this scale).
 
 
-
-
----
-
-## Where to find each `[FILL IN]`
-
-| Placeholder | Where to get it |
-|---|---|
-| LightGBM MAE / RMSE / MAPE | Output of `uv run python -m src.forecasting.train_lightgbm` (the printed metrics) |
-| LSTM MAE / RMSE / MAPE | Output of `uv run python -m src.forecasting.train_pytorch` |
-| Vehicles | `configs/config.yaml` → `optimization.num_vehicles` |
-| Total route distance | Output of `uv run python -m src.optimization.vrp_solver` (the "Total distance" line) |
-| p95 latencies | Output of `uv run locust ...` (the summary table at the end) |
-| Render URL | Your actual Render dashboard URL |
-| HF Space URL | Your actual Hugging Face Space URL |
 
 **Quick way to grab all the numbers at once:**
 
