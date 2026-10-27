@@ -63,14 +63,6 @@ uv run uvicorn src.serving.api:app --reload --port 8000
 | Solver | OR-Tools (PATH_CHEAPEST_ARC, 30s time limit) |
 | Distance metric | Haversine (great-circle) from zone centroids |
 
-Type     Name                     # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
---------|-----------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
-GET      /forecast                   586     0(0.00%) |    555     195    1549    470 |    9.85        0.00
-GET      /health                     168     0(0.00%) |    358     184    1060    280 |    2.82        0.00
-POST     /predict                    420     0(0.00%) |    431     186    1429    330 |    7.06        0.00
-GET      /routes                     520     0(0.00%) |    439     181    1544    330 |    8.74        0.00
---------|-----------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
-         Aggregated                 1694     0(0.00%) |    469     181    1549    370 |   28.48        0.00
 
 
 | Layer | Tool |
