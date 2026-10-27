@@ -78,7 +78,7 @@ uv run uvicorn src.serving.api:app --reload --port 8000
 | Packaging | uv, Docker |
 
 ## Repo Structure
-
+```
 ├── src/
 │   ├── data/              # Ingestion, feature engineering, zone centroids
 │   ├── forecasting/       # LightGBM + PyTorch training scripts
@@ -95,7 +95,7 @@ uv run uvicorn src.serving.api:app --reload --port 8000
 ├── uv.lock                # Locked dependency tree
 ├── Dockerfile             # Production image (Render)
 └── docker-compose.yml     # Local dev (MLflow) 
-
+```
 
 ## Design Decisions
 
