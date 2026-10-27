@@ -1,7 +1,6 @@
 FROM python:3.13-slim
 WORKDIR /app
 
-# Install libgomp (required by OR-Tools / LightGBM)
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -11,4 +10,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-editable
 
 COPY . .
-CMD uv run uvicorn src.serving.api:app --host 0.0.0.0 --port ${PORT}   
+
+# Use the venv directly — no runtime sync
+ENV PATH="/app/.venv/bin:$PATH"
+CMD uvicorn src.serving.api:app --host 0.0.0.0 --port ${PORT}   
