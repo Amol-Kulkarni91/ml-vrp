@@ -5,6 +5,7 @@ and neural models, then solves a capacitated VRP with time windows via OR-Tools,
 served as a FastAPI endpoint with full MLOps (tracking, monitoring, auto-retraining).
 
 ## Architecture
+```
 ┌─────────────────────────────────────────────────────────────────────┐
 │ GitHub Actions (daily, 06:00 UTC) │
 │ │
@@ -26,7 +27,7 @@ served as a FastAPI endpoint with full MLOps (tracking, monitoring, auto-retrain
 │ Hugging Face Space (Streamlit dashboard) │
 │ Routes on map · Forecast accuracy · Drift history │
 └─────────────────────────────────────────────────────────────────────┘
-
+```
 
 
 ## Live Demo
