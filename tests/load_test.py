@@ -1,9 +1,10 @@
 """Load test: 50 concurrent users, 60 seconds. Run locally against the deployed API."""
 from locust import HttpUser, between, task
 
-BASE = "https://ml-vrp.onrender.com/"  # ← replace with your URL
+BASE = "https://ml-vrp.onrender.com/" 
 
 class APIUser(HttpUser):
+    host ="https://ml-vrp.onrender.com"
     wait_time = between(0.5, 2)
 
     @task(3)
