@@ -39,7 +39,8 @@ jobs:
           import json
           print(json.dumps(check_drift()))
           " > drift_result.json
-          echo "result=$(cat drift_result.json)" >> "$GITHUB_OUTPUT"
+          cat drift_result.json
+          echo "retrain=$(jq -r '.retrain' drift_result.json)" >> "$GITHUB_OUTPUT"
 
       - name: Retrain if drift detected
         if: contains(steps.drift.outputs.result, 'drift_detected')

@@ -86,7 +86,7 @@ def check_drift(
     }
 
     print(f"Drift check ({latest.date()}): PSI={psi:.4f} "
-          f"(threshold={threshold}) → {status}")
+          f"(threshold={threshold}) -> {status}", file=sys.stderr)
     return result
 
 
