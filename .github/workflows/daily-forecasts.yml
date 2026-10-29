@@ -43,7 +43,7 @@ jobs:
           echo "retrain=$(jq -r '.retrain' drift_result.json)" >> "$GITHUB_OUTPUT"
 
       - name: Retrain if drift detected
-        if: contains(steps.drift.outputs.result, 'drift_detected')
+        if: steps.drift.outputs.retrain == 'true'
         run: |
           uv run python -m src.data.ingest_data
           uv run python -m src.data.features
