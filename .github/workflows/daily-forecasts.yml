@@ -37,9 +37,9 @@ jobs:
           uv run python -c "
           from src.monitoring.drift import check_drift
           import json
-          result = check_drift()
-          print(json.dumps(result))
-          " | tee drift_result.json
+          print(json.dumps(check_drift()))
+          " > drift_result.json
+          echo "result=$(cat drift_result.json)" >> "$GITHUB_OUTPUT"
 
       - name: Retrain if drift detected
         if: contains(steps.drift.outputs.result, 'drift_detected')

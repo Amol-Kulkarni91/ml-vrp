@@ -1,6 +1,6 @@
 """Train LightGBM demand forecast per zone, log to MLflow."""
 import json
-
+import os
 import lightgbm as lgb
 import mlflow
 import numpy as np
@@ -39,7 +39,7 @@ def train():
     mape = np.mean(np.abs((y_test - preds) / (y_test + 1e-8))) * 100
 
     # Log to MLflow
-    mlflow.set_tracking_uri("http://localhost:5000")
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
     mlflow.set_experiment("ml-vrp")
     with mlflow.start_run(run_name="lightgbm-baseline"):
         mlflow.log_params({
