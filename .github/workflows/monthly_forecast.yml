@@ -1,8 +1,8 @@
-name: Monthly Forecast & Solve
+name: Weekly Forecast & Solve
 
 on:
   schedule:
-    - cron: "0 6 1 * *" 
+    - cron: "0 6 * * 1"  # Every Monday at 6:00 AM UTC 
   workflow_dispatch:
 
 permissions:
