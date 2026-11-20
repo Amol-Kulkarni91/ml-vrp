@@ -1,13 +1,14 @@
 """ML-VRP Dashboard: routes on map, forecast accuracy, drift history."""
+
 import json
+from pathlib import Path
+
+import folium
 import pandas as pd
-import numpy as np
-import streamlit as st
-from streamlit_folium import st_folium  
 import plotly.express as px
 import plotly.graph_objects as go
-from pathlib import Path
-import folium
+import streamlit as st
+from streamlit_folium import st_folium
 
 st.set_page_config(page_title="ML-VRP Dashboard", layout="wide")
 st.title("ML-Driven VRP — Live Dashboard")
@@ -15,6 +16,7 @@ st.caption("Daily demand forecast → OR-Tools route optimization → drift moni
 
 RESULTS = Path(__file__).parent.parent / "results"
 DATA = Path(__file__).parent.parent / "data" / "processed"
+
 
 # ─── Load data ───────────────────────────────────────────────────────────────
 @st.cache_data
@@ -25,6 +27,7 @@ def load_routes():
     with open(path) as f:
         return json.load(f)
 
+
 @st.cache_data
 def load_forecast():
     path = RESULTS / "forecast.json"
@@ -33,6 +36,7 @@ def load_forecast():
     df = pd.read_json(path)
     df["date"] = pd.to_datetime(df["date"])
     return df
+
 
 @st.cache_data
 def load_actual():
@@ -43,12 +47,14 @@ def load_actual():
     df["date"] = pd.to_datetime(df["date"])
     return df
 
+
 @st.cache_data
 def load_centroids():
     path = DATA / "zone_centroids.csv"
     if not path.exists():
         return None
     return pd.read_csv(path)
+
 
 @st.cache_data
 def load_drift_history():
@@ -57,6 +63,7 @@ def load_drift_history():
         return None
     with open(path) as f:
         return json.load(f)
+
 
 routes = load_routes()
 forecast = load_forecast()
@@ -71,8 +78,11 @@ with tab1:
     if routes is None or routes.get("status") != "optimal":
         st.warning("No routes available yet.")
     elif centroids is not None:
-        st.metric("Total distance", f"{routes['total_distance_m'] / 1000:.1f} km",
-                  delta=f"{routes['num_routes']} routes")
+        st.metric(
+            "Total distance",
+            f"{routes['total_distance_m'] / 1000:.1f} km",
+            delta=f"{routes['num_routes']} routes",
+        )
 
         m = folium.Map(location=[40.75, -73.95], zoom_start=12)
 
@@ -88,14 +98,16 @@ with tab1:
                     points.append([row["lat"].values[0], row["lon"].values[0]])
             if len(points) > 1:
                 folium.PolyLine(
-                    points, color=color, weight=4, opacity=0.8,
-                    popup=f"Route {i+1} ({len(route)} stops)"
+                    points,
+                    color=color,
+                    weight=4,
+                    opacity=0.8,
+                    popup=f"Route {i + 1} ({len(route)} stops)",
                 ).add_to(m)
                 # Mark stops
                 for j, pt in enumerate(points):
                     folium.CircleMarker(
-                        pt, radius=6, color=color, fill=True,
-                        popup=f"Stop {j+1}"
+                        pt, radius=6, color=color, fill=True, popup=f"Stop {j + 1}"
                     ).add_to(m)
 
         st_folium(m, width=800, height=500)
@@ -105,26 +117,40 @@ with tab1:
 with tab2:
     if forecast is not None and actual is not None:
         # Merge forecast vs actual
-        merged = forecast.merge(actual, on=["PULocationID", "date"],
-                                suffixes=("_pred", "_actual"))
+        merged = forecast.merge(
+            actual, on=["PULocationID", "date"], suffixes=("_pred", "_actual")
+        )
         if len(merged) > 0:
             # MAE over time
             merged["error"] = (merged["forecast"] - merged["trip_count"]).abs()
             daily_mae = merged.groupby("date")["error"].mean().reset_index()
 
             fig = go.Figure()
-            fig.add_trace(go.Scatter(x=daily_mae["date"], y=daily_mae["error"],
-                                      mode="lines+markers", name="Daily MAE"))
-            fig.update_layout(title="Forecast Error Over Time (MAE)",
-                              xaxis_title="Date", yaxis_title="MAE (trips)")
+            fig.add_trace(
+                go.Scatter(
+                    x=daily_mae["date"],
+                    y=daily_mae["error"],
+                    mode="lines+markers",
+                    name="Daily MAE",
+                )
+            )
+            fig.update_layout(
+                title="Forecast Error Over Time (MAE)",
+                xaxis_title="Date",
+                yaxis_title="MAE (trips)",
+            )
             st.plotly_chart(fig, use_container_width=True)
 
             # Per-zone comparison (latest date)
             latest = merged["date"].max()
             latest_df = merged[merged["date"] == latest]
-            fig2 = px.bar(latest_df, x="PULocationID", y=["forecast", "trip_count"],
-                          labels={"value": "Trips", "PULocationID": "Zone"},
-                          title=f"Forecast vs Actual — {latest.date()}")
+            fig2 = px.bar(
+                latest_df,
+                x="PULocationID",
+                y=["forecast", "trip_count"],
+                labels={"value": "Trips", "PULocationID": "Zone"},
+                title=f"Forecast vs Actual — {latest.date()}",
+            )
             fig2.update_layout(barmode="group")
             st.plotly_chart(fig2, use_container_width=True)
         else:
@@ -140,4 +166,4 @@ with tab3:
         else:
             st.success(f"✅ Model stable (PSI={drift['psi']})")
     else:
-        st.info("No drift data yet. Will appear after first daily run.")   
+        st.info("No drift data yet. Will appear after first daily run.")

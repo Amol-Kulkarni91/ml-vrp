@@ -1,12 +1,13 @@
 """Solve CVRP-TW using OR-Tools with forecasted demand as node weights."""
+
 import json
 import math
 
 import pandas as pd
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
-from src.optimization.baseline import nearest_neighbor
 
 from src.config import load_config
+from src.optimization.baseline import nearest_neighbor
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
@@ -14,9 +15,12 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
     R = 6_371_000  # Earth radius in meters
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
-    a = (math.sin(dlat / 2) ** 2 +
-         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-         math.sin(dlon / 2) ** 2)
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlon / 2) ** 2
+    )
     return int(R * 2 * math.asin(math.sqrt(a)))
 
 
@@ -38,17 +42,24 @@ def build_distance_matrix(zone_ids: list[int]) -> list[list[int]]:
     return dist_matrix
 
 
-def solve_vrp(forecast: pd.DataFrame, cfg: dict, first_solution_only: bool = False) -> dict:
+def solve_vrp(
+    forecast: pd.DataFrame, cfg: dict, first_solution_only: bool = False
+) -> dict:
     forecast = forecast.sort_values("PULocationID").reset_index(drop=True)
     zone_ids = forecast["PULocationID"].tolist()
     depot_zone = cfg["optimization"]["depot_zone"]
     if depot_zone not in zone_ids:
-        return {"status": "error", "reason": f"depot zone {depot_zone} missing from forecast"}
+        return {
+            "status": "error",
+            "reason": f"depot zone {depot_zone} missing from forecast",
+        }
     depot = zone_ids.index(depot_zone)
 
     demand = forecast["forecast"].clip(lower=0).round().astype(int).tolist()
     demand[depot] = 0
-    print(f"  Total demand: {sum(demand)}, capacity/vehicle: {cfg['optimization']['vehicle_capacity']}")
+    print(
+        f"  Total demand: {sum(demand)}, capacity/vehicle: {cfg['optimization']['vehicle_capacity']}"
+    )
 
     num_locations = len(zone_ids)
     num_vehicles = cfg["optimization"]["num_vehicles"]
@@ -61,7 +72,9 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict, first_solution_only: bool = Fal
 
     # Distance callback
     def dist_cb(from_index, to_index):
-        return dist_matrix[manager.IndexToNode(from_index)][manager.IndexToNode(to_index)]
+        return dist_matrix[manager.IndexToNode(from_index)][
+            manager.IndexToNode(to_index)
+        ]
 
     dist_idx = routing.RegisterTransitCallback(dist_cb)
     routing.SetArcCostEvaluatorOfAllVehicles(dist_idx)
@@ -74,11 +87,14 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict, first_solution_only: bool = Fal
     routing.AddDimensionWithVehicleCapacity(
         demand_idx, 0, [capacity] * num_vehicles, True, "Capacity"
     )
-    
+
     # Time window dimension
     def time_cb(from_index, to_index):
         # distance in meters / 30 km/h (8.33 m/s) → seconds → minutes
-        return dist_matrix[manager.IndexToNode(from_index)][manager.IndexToNode(to_index)] // 500
+        return (
+            dist_matrix[manager.IndexToNode(from_index)][manager.IndexToNode(to_index)]
+            // 500
+        )
 
     time_idx = routing.RegisterTransitCallback(time_cb)
     tw_rel = [0, tw[1] - tw[0]]  # [0, 1440]
@@ -97,12 +113,15 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict, first_solution_only: bool = Fal
 
     # Solve
     params = pywrapcp.DefaultRoutingSearchParameters()
-    params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+    params.first_solution_strategy = (
+        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+    )
     if first_solution_only:
-        params.solution_limit = 1          # baseline: no improvement search
+        params.solution_limit = 1  # baseline: no improvement search
     else:
         params.local_search_metaheuristic = (
-            routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
+            routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+        )
         params.time_limit.FromSeconds(30)
 
     solution = routing.SolveWithParameters(params)
@@ -133,7 +152,8 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict, first_solution_only: bool = Fal
         "routes": routes,
         "zone_ids": zone_ids,
     }
-    
+
+
 def prepare_instance(forecast: pd.DataFrame, cfg: dict):
     forecast = forecast.sort_values("PULocationID").reset_index(drop=True)
     zone_ids = forecast["PULocationID"].tolist()
@@ -149,13 +169,17 @@ if __name__ == "__main__":
     latest = forecast["date"].max()
     today = forecast[forecast["date"] == latest]
 
-    result = solve_vrp(today, cfg)                              # full search
-    first = solve_vrp(today, cfg, first_solution_only=True)     # no improvement
+    result = solve_vrp(today, cfg)  # full search
+    first = solve_vrp(today, cfg, first_solution_only=True)  # no improvement
 
     zone_ids, depot, demand, dist = prepare_instance(today, cfg)
-    nn = nearest_neighbor(dist, demand,
-                          cfg["optimization"]["vehicle_capacity"],
-                          depot, cfg["optimization"]["num_vehicles"])
+    nn = nearest_neighbor(
+        dist,
+        demand,
+        cfg["optimization"]["vehicle_capacity"],
+        depot,
+        cfg["optimization"]["num_vehicles"],
+    )
 
     if result.get("status") == "feasible" and not nn["unserved"]:
         opt, nn_d = result["total_distance_m"], nn["total_distance_m"]

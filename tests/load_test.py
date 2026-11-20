@@ -1,10 +1,12 @@
 """Load test: 50 concurrent users, 60 seconds. Run locally against the deployed API."""
+
 from locust import HttpUser, between, task
 
-BASE = "https://ml-vrp.onrender.com/" 
+BASE = "https://ml-vrp.onrender.com/"
+
 
 class APIUser(HttpUser):
-    host ="https://ml-vrp.onrender.com"
+    host = "https://ml-vrp.onrender.com"
     wait_time = between(0.5, 2)
 
     @task(3)
@@ -17,12 +19,18 @@ class APIUser(HttpUser):
 
     @task(2)
     def predict(self):
-        self.client.post("/predict", json={
-            "lag_1": 120, "lag_7": 95,
-            "rolling_mean_7": 110, "rolling_std_7": 15,
-            "day_of_week": 2, "is_weekend": 0,
-        })
+        self.client.post(
+            "/predict",
+            json={
+                "lag_1": 120,
+                "lag_7": 95,
+                "rolling_mean_7": 110,
+                "rolling_std_7": 15,
+                "day_of_week": 2,
+                "is_weekend": 0,
+            },
+        )
 
     @task(1)
     def health(self):
-        self.client.get("/health")   
+        self.client.get("/health")

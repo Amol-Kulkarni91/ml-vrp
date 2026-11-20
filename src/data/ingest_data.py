@@ -1,4 +1,5 @@
 """Download NYC TLC Yellow Taxi Parquet files and aggregate to zone-day demand."""
+
 import os
 from pathlib import Path
 
@@ -22,6 +23,7 @@ def download_month(month: str, dest: str = "data/raw/") -> Path:
     with open(path, "wb") as f:
         f.writelines(r.iter_content(1024 * 1024))
     return path
+
 
 def load_and_aggregate(months: list[str], zone_ids: list[int]) -> pd.DataFrame:
     """
@@ -51,6 +53,7 @@ def load_and_aggregate(months: list[str], zone_ids: list[int]) -> pd.DataFrame:
         .reset_index(drop=True)
     )
     return demand
+
 
 if __name__ == "__main__":
     cfg = load_config()

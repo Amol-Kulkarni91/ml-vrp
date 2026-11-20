@@ -1,4 +1,5 @@
 """Detect forecast drift using PSI. Trigger retrain if threshold exceeded."""
+
 import json
 import sys
 from pathlib import Path
@@ -43,16 +44,26 @@ def check_drift(
     # Only dates where BOTH a forecast and an actual exist
     merged = forecast.merge(actual, on=["PULocationID", "date"], how="inner")
     if merged.empty:
-        return {"run_date": run_date, "psi": None, "status": "no_overlap",
-                "retrain": False, "n_samples": 0,
-                "forecast_max_date": str(forecast["date"].max().date()),
-                "actual_max_date": str(actual["date"].max().date())}
+        return {
+            "run_date": run_date,
+            "psi": None,
+            "status": "no_overlap",
+            "retrain": False,
+            "n_samples": 0,
+            "forecast_max_date": str(forecast["date"].max().date()),
+            "actual_max_date": str(actual["date"].max().date()),
+        }
 
     latest = merged["date"].max()
     merged = merged[merged["date"] > latest - pd.Timedelta(days=lookback_days)]
     if len(merged) < min_samples:
-        return {"run_date": run_date, "psi": None, "status": "insufficient_data",
-                "retrain": False, "n_samples": len(merged)}
+        return {
+            "run_date": run_date,
+            "psi": None,
+            "status": "insufficient_data",
+            "retrain": False,
+            "n_samples": len(merged),
+        }
 
     # Seasonal-naive baseline: same zone, same weekday last week
     naive = actual.copy()
@@ -62,21 +73,36 @@ def check_drift(
 
     psi = compute_psi(merged["forecast"].values, merged["trip_count"].values)
     if not np.isfinite(psi):
-        return {"run_date": run_date, "psi": None, "status": "insufficient_data",
-                "retrain": False, "n_samples": len(merged)}
+        return {
+            "run_date": run_date,
+            "psi": None,
+            "status": "insufficient_data",
+            "retrain": False,
+            "n_samples": len(merged),
+        }
 
     err = (merged["forecast"] - merged["trip_count"]).abs()
     has_naive = merged["naive_7d"].notna()
     mae = float(err[has_naive].mean()) if has_naive.any() else float(err.mean())
-    naive_mae = (float((merged.loc[has_naive, "naive_7d"]
-                        - merged.loc[has_naive, "trip_count"]).abs().mean())
-                 if has_naive.any() else None)
+    naive_mae = (
+        float(
+            (merged.loc[has_naive, "naive_7d"] - merged.loc[has_naive, "trip_count"])
+            .abs()
+            .mean()
+        )
+        if has_naive.any()
+        else None
+    )
 
     status = "drift_detected" if psi > threshold else "stable"
     result = {
-        "run_date": run_date, "date": str(latest.date()),
-        "psi": round(psi, 4), "threshold": threshold, "status": status,
-        "retrain": psi > threshold, "n_samples": len(merged),
+        "run_date": run_date,
+        "date": str(latest.date()),
+        "psi": round(psi, 4),
+        "threshold": threshold,
+        "status": status,
+        "retrain": psi > threshold,
+        "n_samples": len(merged),
         "lookback_days": lookback_days,
         "mae": round(mae, 2),
         "naive_mae": round(naive_mae, 2) if naive_mae is not None else None,
@@ -98,7 +124,9 @@ if __name__ == "__main__":
     # History, one entry per run date
     hist_path = Path("results/drift_history.json")
     history = json.loads(hist_path.read_text()) if hist_path.exists() else []
-    history = [h for h in history if h.get("run_date") != result.get("run_date")] + [result]
+    history = [h for h in history if h.get("run_date") != result.get("run_date")] + [
+        result
+    ]
     hist_path.write_text(json.dumps(history, indent=2))
 
     print(json.dumps(result, indent=2))
