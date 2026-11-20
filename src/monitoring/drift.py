@@ -86,10 +86,19 @@ def check_drift(
 
 
 if __name__ == "__main__":
+    import json
+    from pathlib import Path
+
     result = check_drift()
+    Path("results").mkdir(exist_ok=True)
+
+    # Latest result, for the dashboard
+    Path("results/drift.json").write_text(json.dumps(result, indent=2))
+
+    # History, one entry per run date
     hist_path = Path("results/drift_history.json")
     history = json.loads(hist_path.read_text()) if hist_path.exists() else []
-    history = [h for h in history if h.get("run_date") != result["run_date"]] + [result]
-    hist_path.parent.mkdir(exist_ok=True)
+    history = [h for h in history if h.get("run_date") != result.get("run_date")] + [result]
     hist_path.write_text(json.dumps(history, indent=2))
+
     print(json.dumps(result, indent=2))
