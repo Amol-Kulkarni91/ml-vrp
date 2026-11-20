@@ -1,0 +1,26 @@
+{
+  "LightGBM": {
+    "mae": 16.07,
+    "rmse": 27.54,
+    "wape_pct": 12.1,
+    "n": 280
+  },
+  "LSTM": {
+    "mae": 14.22,
+    "rmse": 23.52,
+    "wape_pct": 10.7,
+    "n": 280
+  },
+  "Naive lag-7": {
+    "mae": 15.36,
+    "rmse": 26.62,
+    "wape_pct": 11.6,
+    "n": 280
+  },
+  "Naive lag-1": {
+    "mae": 26.05,
+    "rmse": 51.29,
+    "wape_pct": 19.7,
+    "n": 280
+  }
+}

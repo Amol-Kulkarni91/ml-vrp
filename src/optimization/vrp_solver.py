@@ -4,6 +4,7 @@ import math
 
 import pandas as pd
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+from src.optimization.baseline import nearest_neighbor
 
 from src.config import load_config
 
@@ -37,34 +38,25 @@ def build_distance_matrix(zone_ids: list[int]) -> list[list[int]]:
     return dist_matrix
 
 
-def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
-    """
-    forecast: DataFrame with [PULocationID, forecast] for today
-    cfg: config dict with optimization params
-    """
+def solve_vrp(forecast: pd.DataFrame, cfg: dict, first_solution_only: bool = False) -> dict:
+    forecast = forecast.sort_values("PULocationID").reset_index(drop=True)
     zone_ids = forecast["PULocationID"].tolist()
-    demand = forecast.set_index("PULocationID")["forecast"].astype(int).tolist()
-    demand[0] = 0  # depot doesn't consume capacity
+    depot_zone = cfg["optimization"]["depot_zone"]
+    if depot_zone not in zone_ids:
+        return {"status": "error", "reason": f"depot zone {depot_zone} missing from forecast"}
+    depot = zone_ids.index(depot_zone)
+
+    demand = forecast["forecast"].clip(lower=0).round().astype(int).tolist()
+    demand[depot] = 0
+    print(f"  Total demand: {sum(demand)}, capacity/vehicle: {cfg['optimization']['vehicle_capacity']}")
+
     num_locations = len(zone_ids)
     num_vehicles = cfg["optimization"]["num_vehicles"]
     capacity = cfg["optimization"]["vehicle_capacity"]
     tw = cfg["optimization"]["time_window"]
-    max_zone = max(demand)
-    if max_zone > capacity:
-        print(f"  ⚠️  Zone at index {demand.index(max_zone)} has demand {max_zone} > capacity {capacity}")
-        print(f"  Per-zone demand: {demand}")
 
-    # Real distance matrix from zone centroids
     dist_matrix = build_distance_matrix(zone_ids)
-    
-    max_dist = max(max(row) for row in dist_matrix)
-    print(f"  Max zone-to-zone distance: {max_dist / 1000:.1f} km")
-    print(f"  Max single-leg time: {max_dist // 500} min")
-
-    # OR-Tools setup
-    manager = pywrapcp.RoutingIndexManager(
-        num_locations, num_vehicles, 0  # depot = zone 0
-    )
+    manager = pywrapcp.RoutingIndexManager(num_locations, num_vehicles, depot)
     routing = pywrapcp.RoutingModel(manager)
 
     # Distance callback
@@ -106,7 +98,12 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
     # Solve
     params = pywrapcp.DefaultRoutingSearchParameters()
     params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-    params.time_limit.FromSeconds(30)
+    if first_solution_only:
+        params.solution_limit = 1          # baseline: no improvement search
+    else:
+        params.local_search_metaheuristic = (
+            routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
+        params.time_limit.FromSeconds(30)
 
     solution = routing.SolveWithParameters(params)
 
@@ -136,6 +133,14 @@ def solve_vrp(forecast: pd.DataFrame, cfg: dict) -> dict:
         "routes": routes,
         "zone_ids": zone_ids,
     }
+    
+def prepare_instance(forecast: pd.DataFrame, cfg: dict):
+    forecast = forecast.sort_values("PULocationID").reset_index(drop=True)
+    zone_ids = forecast["PULocationID"].tolist()
+    depot = zone_ids.index(cfg["optimization"]["depot_zone"])
+    demand = forecast["forecast"].clip(lower=0).round().astype(int).tolist()
+    demand[depot] = 0
+    return zone_ids, depot, demand, build_distance_matrix(zone_ids)
 
 
 if __name__ == "__main__":
@@ -143,14 +148,23 @@ if __name__ == "__main__":
     forecast = pd.read_json("results/forecast.json")
     latest = forecast["date"].max()
     today = forecast[forecast["date"] == latest]
-    result = solve_vrp(today, cfg)
+
+    result = solve_vrp(today, cfg)                              # full search
+    first = solve_vrp(today, cfg, first_solution_only=True)     # no improvement
+
+    zone_ids, depot, demand, dist = prepare_instance(today, cfg)
+    nn = nearest_neighbor(dist, demand,
+                          cfg["optimization"]["vehicle_capacity"],
+                          depot, cfg["optimization"]["num_vehicles"])
+
+    if result.get("status") == "feasible" and not nn["unserved"]:
+        opt, nn_d = result["total_distance_m"], nn["total_distance_m"]
+        result["baselines"] = {
+            "nearest_neighbor_m": nn_d,
+            "first_solution_m": first.get("total_distance_m"),
+            "reduction_vs_nn_pct": round((nn_d - opt) / nn_d * 100, 1),
+        }
+
     with open("results/routes.json", "w") as f:
         json.dump(result, f, indent=2)
-
-    if result["status"] == "infeasible":
-        print("No feasible solution found.")
-        print(f"  Zones: {len(today)}, Capacity: {cfg['optimization']['vehicle_capacity']}, "
-              f"Vehicles: {cfg['optimization']['num_vehicles']}")
-        print(f"  Total demand: {today['forecast'].sum():.0f}")
-    else:
-        print(f"Routes: {result['num_routes']}, Total distance: {result['total_distance_m'] / 1000:.1f} km")   
+    print(json.dumps(result.get("baselines", {}), indent=2))

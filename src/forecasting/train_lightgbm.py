@@ -62,7 +62,7 @@ def train():
             "n_estimators": 300, "learning_rate": 0.05,
             "max_depth": 6, "num_leaves": 31,
         })
-        mlflow.log_metrics({"mae": mae, "rmse": rmse, "mape_pct": mape})
+        mlflow.log_metrics({"mae": mae, "rmse": rmse, "wape_pct": wape})
         mlflow.lightgbm.log_model(model, "model")
 
     # Save for serving
@@ -70,11 +70,11 @@ def train():
    
     print(f"MAE: {mae:.2f} trips")
     print(f"RMSE: {rmse:.2f}")
-    print(f"MAPE: {mape:.1f}%")
+    print(f"WAPE: {wape:.1f}%")
     print("Model saved to results/lightgbm_model.txt")
     
     with open("results/lightgbm_metrics.json", "w") as f:
-        json.dump({"mae": mae, "rmse": rmse, "mape_pct": mape}, f)
+        json.dump({"mae": mae, "rmse": rmse, "wape_pct": wape}, f)
 
     # Save predictions for the VRP solver
     out = df[~train_mask][["PULocationID", "date"]].assign(forecast=preds)

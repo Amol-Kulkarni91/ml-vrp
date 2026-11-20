@@ -1,0 +1,15 @@
+artifact_uri: file:C:/Users/Amol/Documents/git-projects/ml-vrp/ml-vrp/mlruns/364346895569609215/17ac67bdcd03478086ac42b3d457ab89/artifacts
+end_time: 1795147083240
+entry_point_name: ''
+experiment_id: '364346895569609215'
+lifecycle_stage: active
+run_id: 17ac67bdcd03478086ac42b3d457ab89
+run_name: lightgbm-baseline
+run_uuid: 17ac67bdcd03478086ac42b3d457ab89
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1795147075566
+status: 3
+tags: []
+user_id: Amol
