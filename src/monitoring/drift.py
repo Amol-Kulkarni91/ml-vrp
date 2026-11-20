@@ -1,96 +1,95 @@
 """Detect forecast drift using PSI. Trigger retrain if threshold exceeded."""
 import json
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 
-def compute_psi(expected: np.ndarray, actual: np.ndarray, bins: int = 10) -> float:
-    """
-    Population Stability Index.
-    < 0.10 = stable
-    0.10–0.25 = moderate drift (watch)
-    > 0.25 = significant drift (retrain)
-    """
-    # Normalize both to [0, 1] using expected's range
-    e_min, e_max = expected.min(), expected.max()
-    span = (e_max - e_min) + 1e-8
-    e_norm = (expected - e_min) / span
-    a_norm = (actual - e_min) / span
-
-    # Bin edges
-    breakpoints = np.linspace(0, 1, bins + 1)
-    breakpoints[0] = -np.inf
-    breakpoints[-1] = np.inf
-
-    e_counts, _ = np.histogram(e_norm, breakpoints)
-    a_counts, _ = np.histogram(a_norm, breakpoints)
-
-    # Convert to proportions, clip to avoid log(0)
+def compute_psi(expected: np.ndarray, actual: np.ndarray, bins: int = 5) -> float:
+    """PSI with quantile bins from the expected distribution.
+    <0.10 stable, 0.10-0.25 watch, >0.25 retrain."""
+    expected = np.asarray(expected, float)
+    actual = np.asarray(actual, float)
+    edges = np.unique(np.quantile(expected, np.linspace(0, 1, bins + 1)))
+    if len(edges) < 3:
+        return float("nan")
+    edges[0], edges[-1] = -np.inf, np.inf
+    e_counts, _ = np.histogram(expected, edges)
+    a_counts, _ = np.histogram(actual, edges)
     e_prop = np.clip(e_counts / len(expected), 1e-4, None)
     a_prop = np.clip(a_counts / len(actual), 1e-4, None)
-
     return float(np.sum((a_prop - e_prop) * np.log(a_prop / e_prop)))
 
 
 def check_drift(
-    forecast_file: str = "results/forecast.json",
-    actual_file: str = "data/processed/zone_day_demand.parquet",
-    lookback_days: int = 7,
-    threshold: float = 0.25,
+    forecast_file="results/forecast.json",
+    actual_file="data/processed/zone_day_demand.parquet",
+    lookback_days=7,
+    threshold=0.25,
+    min_samples=10,
 ) -> dict:
-    """
-    Compare the last N days of model forecast against actual demand.
-    Returns PSI and a retrain recommendation.
-    """
     forecast = pd.read_json(forecast_file)
     forecast["date"] = pd.to_datetime(forecast["date"])
     forecast["PULocationID"] = forecast["PULocationID"].astype(int)
     actual = pd.read_parquet(actual_file)
     actual["date"] = pd.to_datetime(actual["date"])
     actual["PULocationID"] = actual["PULocationID"].astype(int)
+    actual = actual[["PULocationID", "date", "trip_count"]]
 
-    # Use the latest date in forecast as "today"
-    latest = pd.Timestamp(forecast["date"].max())
-    window_start = latest - pd.Timedelta(days=int(lookback_days))   
+    run_date = str(pd.Timestamp.today().date())
 
-    # Filter both to the overlap window
-    recent_forecast = forecast[forecast["date"] >= window_start]
-    recent_actual = actual[actual["date"] >= window_start]
+    # Only dates where BOTH a forecast and an actual exist
+    merged = forecast.merge(actual, on=["PULocationID", "date"], how="inner")
+    if merged.empty:
+        return {"run_date": run_date, "psi": None, "status": "no_overlap",
+                "retrain": False, "n_samples": 0,
+                "forecast_max_date": str(forecast["date"].max().date()),
+                "actual_max_date": str(actual["date"].max().date())}
 
-    # Merge on zone × date
-    merged = recent_forecast.merge(
-        recent_actual,
-        on=["PULocationID", "date"],
-        suffixes=("_pred", "_actual"),
-    )
+    latest = merged["date"].max()
+    merged = merged[merged["date"] > latest - pd.Timedelta(days=lookback_days)]
+    if len(merged) < min_samples:
+        return {"run_date": run_date, "psi": None, "status": "insufficient_data",
+                "retrain": False, "n_samples": len(merged)}
 
-    if len(merged) < 10:
-        return {"psi": None, "status": "insufficient_data", "retrain": False,
-                "n_samples": len(merged)}
+    # Seasonal-naive baseline: same zone, same weekday last week
+    naive = actual.copy()
+    naive["date"] = naive["date"] + pd.Timedelta(days=7)
+    naive = naive.rename(columns={"trip_count": "naive_7d"})
+    merged = merged.merge(naive, on=["PULocationID", "date"], how="left")
 
-    psi = compute_psi(
-        merged["forecast"].values.astype(float),
-        merged["trip_count"].values.astype(float),
-    )
+    psi = compute_psi(merged["forecast"].values, merged["trip_count"].values)
+    if not np.isfinite(psi):
+        return {"run_date": run_date, "psi": None, "status": "insufficient_data",
+                "retrain": False, "n_samples": len(merged)}
+
+    err = (merged["forecast"] - merged["trip_count"]).abs()
+    has_naive = merged["naive_7d"].notna()
+    mae = float(err[has_naive].mean()) if has_naive.any() else float(err.mean())
+    naive_mae = (float((merged.loc[has_naive, "naive_7d"]
+                        - merged.loc[has_naive, "trip_count"]).abs().mean())
+                 if has_naive.any() else None)
 
     status = "drift_detected" if psi > threshold else "stable"
     result = {
-        "psi": round(psi, 4),
-        "threshold": threshold,
-        "status": status,
-        "retrain": psi > threshold,
-        "n_samples": len(merged),
+        "run_date": run_date, "date": str(latest.date()),
+        "psi": round(psi, 4), "threshold": threshold, "status": status,
+        "retrain": psi > threshold, "n_samples": len(merged),
         "lookback_days": lookback_days,
-        "date": str(latest.date()),
+        "mae": round(mae, 2),
+        "naive_mae": round(naive_mae, 2) if naive_mae is not None else None,
     }
-
-    print(f"Drift check ({latest.date()}): PSI={psi:.4f} "
-          f"(threshold={threshold}) -> {status}", file=sys.stderr)
+    print(f"Drift check ({latest.date()}): PSI={psi:.4f} -> {status}", file=sys.stderr)
     return result
 
 
 if __name__ == "__main__":
     result = check_drift()
-    print(json.dumps(result, indent=2))   
+    hist_path = Path("results/drift_history.json")
+    history = json.loads(hist_path.read_text()) if hist_path.exists() else []
+    history = [h for h in history if h.get("run_date") != result["run_date"]] + [result]
+    hist_path.parent.mkdir(exist_ok=True)
+    hist_path.write_text(json.dumps(history, indent=2))
+    print(json.dumps(result, indent=2))
