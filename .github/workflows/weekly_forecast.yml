@@ -41,9 +41,9 @@ jobs:
           from src.monitoring.drift import check_drift
           import json
           print(json.dumps(check_drift()))
-          " > drift_result.json
-          cat drift_result.json
-          echo "retrain=$(jq -r '.retrain' drift_result.json)" >> "$GITHUB_OUTPUT"
+          " > results/drift_result.json
+          cat results/drift_result.json
+          echo "retrain=$(jq -r '.retrain' results/drift_result.json)" >> "$GITHUB_OUTPUT"
 
       - name: Retrain if drift detected
         if: steps.drift.outputs.retrain == 'true'
