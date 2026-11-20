@@ -34,10 +34,25 @@ def train():
     )
     model.fit(X_train, y_train)
 
+    
     preds = model.predict(X_test)
-    mae = mean_absolute_error(y_test, preds)
-    rmse = np.sqrt(mean_squared_error(y_test, preds))
-    mape = np.mean(np.abs((y_test - preds) / (y_test + 1e-8))) * 100
+    y = y_test.to_numpy(dtype=float)
+    mae = mean_absolute_error(y, preds)
+    rmse = np.sqrt(mean_squared_error(y, preds))
+    wape = float(np.abs(y - preds).sum() / y.sum() * 100)
+
+    # Naive baselines on the same test rows
+    ok = X_test["lag_7"].notna().to_numpy() & X_test["lag_1"].notna().to_numpy()
+    naive7_mae = mean_absolute_error(y[ok], X_test["lag_7"].to_numpy()[ok])
+    naive1_mae = mean_absolute_error(y[ok], X_test["lag_1"].to_numpy()[ok])
+    model_mae_ok = mean_absolute_error(y[ok], preds[ok])
+
+    metrics = {
+        "mae": mae, "rmse": rmse, "wape_pct": wape,
+        "naive_lag7_mae": naive7_mae, "naive_lag1_mae": naive1_mae,
+        "improvement_vs_lag7_pct": (1 - model_mae_ok / naive7_mae) * 100,
+        "n_test_rows": int(len(y)),
+    }
 
     # Log to MLflow
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
