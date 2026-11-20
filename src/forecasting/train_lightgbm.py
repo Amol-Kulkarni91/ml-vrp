@@ -47,7 +47,7 @@ def train():
     naive1_mae = mean_absolute_error(y[ok], X_test["lag_1"].to_numpy()[ok])
     model_mae_ok = mean_absolute_error(y[ok], preds[ok])
 
-    metrics = {
+    {
         "mae": mae,
         "rmse": rmse,
         "wape_pct": wape,
